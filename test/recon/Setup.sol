@@ -13,35 +13,35 @@ import {AssetManager} from "@recon/AssetManager.sol";
 import {Utils} from "@recon/Utils.sol";
 
 // Your deps
-import "src/Counter.sol";
+import "src/WETH9.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
-    Counter counter;
+    WETH9 weth9;
 
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
     function setup() internal virtual override {
-        // New Actor, beside address(this)
-        _addActor(address(0x411c3));
-        _newAsset(18); // New 18 decimals token
+        weth9 = new WETH9(); // TODO: Add parameters here
 
-        counter = new Counter();
+        // msg.sender is this contract address(this)
 
-        // Mints to all actors and approves allowances to the counter
-        address[] memory approvalArray = new address[](1);
-        approvalArray[0] = address(counter);
-        _finalizeAssetDeployment(_getActors(), approvalArray, type(uint88).max);
+        _addActor(address(0xb0b));
+        _addActor(address(0xc0ff33));
     }
+
+    // receive() external payable {}
+
+    // fallback() external payable {}
 
     /// === MODIFIERS === ///
     /// Prank admin and actor
-    
-    modifier asAdmin {
+
+    modifier asAdmin() {
         vm.prank(address(this));
         _;
     }
 
-    modifier asActor {
+    modifier asActor() {
         vm.prank(address(_getActor()));
         _;
     }
