@@ -12,7 +12,7 @@ evm_version = "paris"
 [profile.default.invariant]
 runs = 16
 depth = 256
-fail_on_revert = false
+fail_on_revert = true
 
 [profile.default.fmt]
 wrap_comments = true

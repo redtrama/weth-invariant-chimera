@@ -5,29 +5,32 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {
-    function invariant_sumUsersDeposits() public {
-        uint256 diff = sumDeposits - sumWithdrawals;
-        t(diff == weth9.totalSupply(), "sumUsersDeposits: sum of deposits should be equal to the total supply");
-    }
 
-    function invariant_userBalanceCannotBeMoreThanTotalSupply() public {
+    /// INVARIANT-01: Individual user balance cannot be more than the total supply
+    function invariant_01() public {
         address[] memory users = _getActors();
         for (uint256 i = 0; i < users.length; i++) {
-            t(weth9.balanceOf(users[i]) <= weth9.totalSupply(), "userBalanceCannotBeMoreThanTotalSupply: user balance cannot be more than the total supply");
+            t(
+                weth9.balanceOf(users[i]) <= weth9.totalSupply(),
+                "INVARIANT-01: user balance cannot be more than the total supply"
+            );
         }
     }
 
-    function invariant_sumUsersWethBalances_shouldBeEqualToTotalSupply() public {
+    /// INVARIANT-02: The sum of all users weth balances should be equal to the total supply
+    function invariant_02() public {
         uint256 usersWethBalance;
         address[] memory users = _getActors();
         for (uint256 i = 0; i < users.length; i++) {
             usersWethBalance += weth9.balanceOf(users[i]);
         }
-        // This reverts cause not considering transfers
-        // t(usersWethBalance == weth9.totalSupply(), "sumUsersWethBalances_shouldBeEqualToTotalSupply: sum of users weth balances should be equal to the total supply");
+        /// TODO: make this check consider transfers
+        t(usersWethBalance == weth9.totalSupply(), "INVARIANT-02: sum of users weth balances should be equal to the total supply");
     }
 
-    function invariant_makeit100() public {
-        weth9.allowance(address(0xb0b), address(0xc0ff33));
+    /// INVARIANT-03: The sum of deposits minus the sum of withdrawals should be equal to the total supply
+    function invariant_03() public {
+        uint256 diff = sumDeposits - sumWithdrawals;
+        t(diff == weth9.totalSupply(), "INVARIANT-03: sum of deposits should be equal to the total supply");
     }
 }

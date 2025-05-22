@@ -22,7 +22,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
     uint256 sumDeposits;
     uint256 sumWithdrawals;
-    
+
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
     function setup() internal virtual override {
@@ -32,25 +32,25 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         _addActor(address(0xc0ff33));
 
         // Fund actors with 100 ether
-        vm.deal(address(0xb0b), 100 ether);
-        vm.deal(address(0xc0ff33), 100 ether);
+        vm.deal(address(0xb0b), 10 ether);
+        vm.deal(address(0xc0ff33), 10 ether);
 
         console2.log("weth9 balance of 0xb0b", address(0xb0b).balance);
     }
-
+    /// Fallback to receive ether
     fallback() external payable {
         // TODO: Add fallback logic here
     }
 
     /// === MODIFIERS === ///
     /// Prank admin and actor
-    
-    modifier asAdmin {
+
+    modifier asAdmin() {
         vm.prank(address(this));
         _;
     }
 
-    modifier asActor {
+    modifier asActor() {
         vm.prank(address(_getActor()));
         _;
     }
