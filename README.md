@@ -2,8 +2,6 @@
 
 This document outlines the invariants and inline properties being tested for the WETH9 contract using the Chimera fuzzing framework. The approach is inspired by [WETH Invariant Testing by Horsefacts](https://github.com/horsefacts/weth-invariant-testing/), focusing on identifying core contract behaviors and ensuring they hold under various conditions.
 
-The properties listed here aim to cover critical functionalities. For a comprehensive audit, consider referring to the [Sherlock audit contest criteria](https://docs.sherlock.xyz/audits/criteria) to identify further areas for property-based testing.
-
 ## Properties Overview
 
 The following table summarizes the general invariants and inline properties defined for the WETH9 contract.
