@@ -7,24 +7,22 @@ import {Setup} from "./Setup.sol";
 abstract contract BeforeAfter is Setup {
     struct Vars {
         uint256 __ignore__;
-        // TODO rename do wethUserBalance
-        uint256 userBalance;
     }
 
     Vars internal _before;
     Vars internal _after;
 
-    modifier updateGhosts() {
+    modifier updateGhosts {
         __before();
         _;
         __after();
     }
 
     function __before() internal {
-        _before.userBalance = weth9.balanceOf(address(_getActor()));
+
     }
 
     function __after() internal {
-        _after.userBalance = weth9.balanceOf(address(_getActor()));
+
     }
 }

@@ -3,14 +3,19 @@ src = "src"
 out = "out"
 libs = ["lib"]
 no_match_contract = "CryticTester"
+via_ir = false
+optimizer = true
+optimizer_runs = 1000000
+evm_version = "paris"
 
 
+[profile.default.invariant]
+runs = 16
+depth = 256
+fail_on_revert = false
 
-[fuzz]
-runs = 1024
-depth = 10
-
-
+[profile.default.fmt]
+wrap_comments = true
 
 optimizer=false ## Required by Crytic-Comile
 

@@ -17,31 +17,26 @@ import "src/WETH9.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     WETH9 weth9;
-
+    
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
     function setup() internal virtual override {
         weth9 = new WETH9(); // TODO: Add parameters here
-
-        // msg.sender is this contract address(this)
-
-        _addActor(address(0xb0b));
-        _addActor(address(0xc0ff33));
     }
 
-    // receive() external payable {}
-
-    // fallback() external payable {}
+    fallback() external payable {
+        // TODO: Add fallback logic here
+    }
 
     /// === MODIFIERS === ///
     /// Prank admin and actor
-
-    modifier asAdmin() {
+    
+    modifier asAdmin {
         vm.prank(address(this));
         _;
     }
 
-    modifier asActor() {
+    modifier asActor {
         vm.prank(address(_getActor()));
         _;
     }
