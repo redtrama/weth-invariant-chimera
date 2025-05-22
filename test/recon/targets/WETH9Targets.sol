@@ -18,8 +18,17 @@ abstract contract Weth9Targets is
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
     function weth9_deposit_clamped(uint256 amount) public payable asActor {
+        uint256 userWethBalanceBefore = weth9.balanceOf(_getActor());
+        uint256 userEthBalanceBefore = address(_getActor()).balance;
         uint256 clampedAmount = between(amount, 1 , address(_getActor()).balance);
         weth9_deposit(clampedAmount);
+        uint256 userWethBalanceAfter = weth9.balanceOf(_getActor());
+        uint256 userEthBalanceAfter = address(_getActor()).balance;
+        // PROPERTY: Weth balance should increase by the amount deposited
+        t(userWethBalanceAfter == userWethBalanceBefore + clampedAmount, "weth9_deposit_clamped: weth balance should increase by the amount deposited");
+
+        // PROPERTY: Eth balance should decrease by the amount deposited
+        t(userEthBalanceAfter == userEthBalanceBefore - clampedAmount, "weth9_deposit_clamped: eth balance should decrease by the amount deposited");
     }
 
     function weth9_withdraw_clamped(uint256 amount) public payable asActor {
