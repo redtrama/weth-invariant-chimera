@@ -6,7 +6,7 @@ import {Setup} from "./Setup.sol";
 // ghost variables for tracking state variable values before and after function calls
 abstract contract BeforeAfter is Setup {
     struct Vars {
-        uint256 __ignore__;
+        uint256 weth9Balance;
     }
 
     Vars internal _before;
@@ -19,10 +19,10 @@ abstract contract BeforeAfter is Setup {
     }
 
     function __before() internal {
-
+        _before.weth9Balance = weth9.balanceOf(_getActor());
     }
 
     function __after() internal {
-
+        _after.weth9Balance = weth9.balanceOf(_getActor());
     }
 }
