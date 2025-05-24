@@ -55,8 +55,10 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
-    function weth9_approve(address guy, uint256 wad) public asActor {
-        weth9.approve(guy, wad);
+    function weth9_approve(uint256 wad) public asActor {
+        // get an actor from the list to approve
+        address actor = _getActor();
+        weth9.approve(actor, wad);
     }
 
     function weth9_deposit(uint256 amount) public asActor {
@@ -65,13 +67,44 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
         sumDeposits += amount;
     }
 
-    // function weth9_transfer(address dst, uint256 wad) public asActor {
-    //     weth9.transfer(dst, wad);
-    // }
+    function weth9_transfer(address dst, uint256 wad) public asActor {
+        // Get a random actor from the list as the destination
+        address[] memory actors = _getActors();
+        require(actors.length > 1, "Need at least 2 actors for transfer");
+        
+        // Select a different actor than the sender
+        address sender = _getActor();
+        address recipient;
+        uint256 recipientIndex = uint256(keccak256(abi.encodePacked(block.timestamp))) % actors.length;
+        recipient = actors[recipientIndex];
+        
+        // Make sure we don't transfer to ourselves
+        if (recipient == sender) {
+            recipientIndex = (recipientIndex + 1) % actors.length;
+            recipient = actors[recipientIndex];
+        }
+        
+        weth9.transfer(recipient, wad);
+    }
 
-    // function weth9_transferFrom(address src, address dst, uint256 wad) public asActor {
-    //     weth9.transferFrom(src, dst, wad);
-    // }
+    function weth9_transferFrom(address src, address dst, uint256 wad) public asActor {
+        // Get a random actor from the list as the destination
+        address[] memory actors = _getActors();
+        require(actors.length > 1, "Need at least 2 actors for transferFrom");
+        
+        // Select different actors for source and destination
+        address spender = _getActor();
+        uint256 recipientIndex = uint256(keccak256(abi.encodePacked(block.timestamp))) % actors.length;
+        address recipient = actors[recipientIndex];
+        
+        // Make sure recipient is different from spender
+        if (recipient == spender) {
+            recipientIndex = (recipientIndex + 1) % actors.length;
+            recipient = actors[recipientIndex];
+        }
+        
+        weth9.transferFrom(spender, recipient, wad);
+    }
 
     function weth9_withdraw(uint256 wad) public asActor {
         weth9.withdraw(wad);
