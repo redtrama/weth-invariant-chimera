@@ -1,69 +1,59 @@
-# WETH9 Invariants and Properties with Chimera
+# WETH9 Invariant Testing Suite
 
-This document outlines the invariants and inline properties being tested for the WETH9 contract using the Chimera fuzzing framework. The approach is inspired by [WETH Invariant Testing by Horsefacts](https://github.com/horsefacts/weth-invariant-testing/), focusing on identifying core contract behaviors and ensuring they hold under various conditions.
+## Chimera framework
 
-## Properties Overview
+This repo outlines the invariants and inline properties being tested for the WETH9 contract using the [Chimera fuzzing framework](https://github.com/Recon-Fuzz/chimera) by Aviggiano. The approach is inspired by [WETH Invariant Testing by Horsefacts](https://github.com/horsefacts/weth-invariant-testing/), focusing on identifying core contract behaviors and ensuring they hold under various conditions.
 
-The following table summarizes the general invariants and inline properties defined for the WETH9 contract.
+### Overview
+This fuzzing suite consists of contracts that define different setUp parameters and invariants for the WETH9 (Wrapped Ether) protocol, focusing on deposit and withdrawal functionality.
 
-| Category          | ID / Function         | Description                                                              | Status        | Notes                                     |
-|-------------------|-----------------------|--------------------------------------------------------------------------|---------------|-------------------------------------------|
-| **General Invariants** |                       |                                                                          |               |                                           |
-| General Invariant | INVARIANT-01          | Individual user balance cannot be more than the total supply.            | Passing       |                                           |
-| General Invariant | INVARIANT-02          | The sum of all users WETH balances should be equal to the total supply.  | Failing       | Reverts; does not consider direct transfers or mints outside Chimera's actor scope. |
-| General Invariant | INVARIANT-03          | The sum of deposits minus the sum of withdrawals (tracked via Chimera) should be equal to the total supply. | Passing       | Assumes `sumDeposits` and `sumWithdrawals` correctly track all relevant actions. |
-| **Inline Properties** |                       |                                                                          |               |                                           |
-| Inline Property   | `weth9_deposit_clamped` | DEPOSIT-01: WETH balance should increase by the amount deposited.       | Passing       |                                           |
-| Inline Property   | `weth9_deposit_clamped` | DEPOSIT-02: ETH balance should decrease by the amount deposited.        | Passing       |                                           |
-| Inline Property   | `weth9_withdraw_clamped`| WITHDRAW-01: WETH balance should decrease after withdrawal.             | Passing       |                                           |
-| Inline Property   | `weth9_withdraw_clamped`| WITHDRAW-02: ETH balance should increase by the amount withdrawn.       | Passing       |                                           |
+Key components tested:
+* WETH9 contract
+* Deposit functionality (ETH → WETH)
+* Withdrawal functionality (WETH → ETH)
+* Balance tracking and accounting
 
-## Detailed Explanations
+The invariants/properties reside in:
+* Properties.sol (Global invariants)
+* WETH9Targets.sol (Handler functions)
 
-### General Invariants
+### Running Tests
 
-General invariants are properties that should hold true for the contract state at any point after any sequence of transactions.
+Foundry:
+```shell
+forge test --match-contract CryticToFoundry -vvvv
+```
+use `--decode-internal` to get more verbose output.
 
-*   **INVARIANT-01: Individual user balance cannot be more than the total supply.**
-    *   **Source:** `test/recon/Properties.sol`
-    *   **Logic:** `weth9.balanceOf(user) <= weth9.totalSupply()`
-    *   **Rationale:** A single user cannot own more WETH than the total amount of WETH in circulation.
-    *   **Status:** Passing.
+Echidna:
+```shell
+echidna . --contract CryticToFoundry --config echidna.yaml --format text --workers 16 --test-limit 1000000 --test-mode exploration
+```
+Medusa:
+```shell
+medusa fuzz
+```
+Will run medusa fuzzer for all the contracts.
 
-*   **INVARIANT-02: The sum of all users WETH balances should be equal to the total supply.**
-    *   **Source:** `test/recon/Properties.sol`
-    *   **Logic:** `sum(weth9.balanceOf(user) for user in _getActors()) == weth9.totalSupply()`
-    *   **Rationale:** The total WETH supply should ideally be accounted for by the balances of all users.
-    *   **Status:** Passing.
-    *   **Note:** The current implementation in `Properties.sol` states: "This reverts cause not considering transfers". This means the sum is only over actors known to Chimera (`_getActors()`). WETH can be transferred to addresses not in `_getActors()`, or WETH can be minted via direct calls to `deposit()` or the fallback by contracts/EOAs not controlled by Chimera actors. The `totalSupply()` is `address(this).balance`, which is the canonical source of truth. This invariant is difficult to hold true if we only sum balances of known actors and don't control all WETH interactions.
+### Invariants & Properties
 
-*   **INVARIANT-03: The sum of deposits minus the sum of withdrawals should be equal to the total supply.**
-    *   **Source:** `test/recon/Properties.sol`
-    *   **Logic:** `sumDeposits - sumWithdrawals == weth9.totalSupply()`
-    *   **Rationale:** The total supply of WETH should reflect the net amount of Ether deposited into the contract, assuming `sumDeposits` and `sumWithdrawals` accurately track all deposit and withdrawal events *orchestrated through the Chimera target functions*.
-    *   **Status:** Passing.
-    *   **Note:** This invariant relies on `sumDeposits` and `sumWithdrawals` being updated correctly only within the `weth9_deposit` and `weth9_withdraw` target functions in `WETH9Targets.sol`. If deposits/withdrawals occur outside these controlled functions (e.g., direct calls to WETH9 contract from other contracts not part of the fuzzing setup, or via the fallback), this invariant might not hold or might give a false sense of security.
+#### Global Invariants (Properties.sol)
+| **ID** | **Description** | **Status** |
+| --- | --- | --- |
+| **INVARIANT-01** | Individual user balance cannot exceed total supply | PASS✅ |
+| **INVARIANT-02** | Sum of all user WETH balances equals total supply | PASS✅ |
+| **INVARIANT-03** | Sum of deposits minus withdrawals equals total supply | PASS✅ |
 
-### Inline Properties
-
-Inline properties are assertions checked within specific test functions (target functions in Chimera), usually verifying the immediate post-conditions of an action. These are defined in `test/recon/targets/WETH9Targets.sol`.
-
-*   **`weth9_deposit_clamped` Function:**
-    *   **DEPOSIT-01: WETH balance should increase by the amount deposited.**
-        *   **Logic:** `userWethBalanceAfter == userWethBalanceBefore + clampedAmount`
-        *   **Rationale:** After a deposit, the user's WETH balance should increase by exactly the deposited amount.
-        *   **Status:** Passing.
-    *   **DEPOSIT-02: ETH balance should decrease by the amount deposited.**
-        *   **Logic:** `userEthBalanceAfter == userEthBalanceBefore - clampedAmount`
-        *   **Rationale:** After a deposit, the user's native ETH balance should decrease by the deposited amount.
-        *   **Status:** Passing.
-
-*   **`weth9_withdraw_clamped` Function:**
-    *   **WITHDRAW-01: WETH balance should decrease after withdrawal.**
-        *   **Logic:** `userWethBalanceBefore - clampedAmount == userWethBalanceAfter`
-        *   **Rationale:** After a withdrawal, the user's WETH balance should decrease by the withdrawn amount.
-        *   **Status:** Passing.
-    *   **WITHDRAW-02: ETH balance should increase by the amount withdrawn.**
-        *   **Logic:** `userEthBalanceBefore + clampedAmount == userEthBalanceAfter`
-        *   **Rationale:** After a withdrawal, the user's native ETH balance should increase by the withdrawn amount.
-        *   **Status:** Passing. 
+#### Inline Properties (WETH9Targets.sol)
+| **ID** | **Description** | **Status** |
+| --- | --- | --- |
+| **DEPOSIT-01** | WETH balance increases by deposited amount | PASS✅ |
+| **DEPOSIT-02** | ETH balance decreases by deposited amount | PASS✅ |
+| **WITHDRAW-01** | WETH balance decreases by withdrawn amount | PASS✅ |
+| **WITHDRAW-02** | ETH balance increases by withdrawn amount | PASS✅ |
+| **TRANSFER-01** | Sender's balance decreases by the transfer amount | TODO |
+| **TRANSFER-02** | Receiver's balance increases by the transfer amount | TODO |
+| **TRANSFERFROM-01** | Sender's balance decreases by the transfer amount | TODO |
+| **TRANSFERFROM-02** | Allowance decreases by the transfer amount (unless it's max uint256) | TODO |
+| **APPROVE-01** | Allowance is set to the exact approved amount | TODO |
+| **APPROVE-02** | Allowance changes from its previous value (when different) | TODO |
