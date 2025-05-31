@@ -39,7 +39,12 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         console2.log("weth9 balance of 0xb0b", address(0xb0b).balance);
     }
     /// Fallback to receive ether
+
     fallback() external payable {
+        // TODO: Add fallback logic here
+    }
+
+    receive() external payable {
         // TODO: Add fallback logic here
     }
 

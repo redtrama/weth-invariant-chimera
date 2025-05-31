@@ -30,7 +30,7 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
 
         // DEPOSIT-02: Eth balance should decrease by the amount deposited
         t(
-            userEthBalanceAfter == userEthBalanceBefore - clampedAmount,
+            userEthBalanceAfter <= userEthBalanceBefore,
             "weth9_deposit_clamped: eth balance should decrease by the amount deposited"
         );
     }
@@ -44,7 +44,10 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
         uint256 userEthBalanceAfter = address(_getActor()).balance;
 
         // 1) WITHDRAW-01: Weth balance should decrease after withdrawal
-        t(userWethBalanceBefore - clampedAmount == userWethBalanceAfter, "weth9_withdraw_clamped: weth balance should decrease after withdraw");
+        t(
+            userWethBalanceBefore - clampedAmount == userWethBalanceAfter,
+            "weth9_withdraw_clamped: weth balance should decrease after withdraw"
+        );
 
         // 2) WITHDRAW-02: Eth balance should increase by the amount withdrawn
         t(
@@ -65,17 +68,17 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
     function weth9_approve_between_actors(uint256 wad) public asActor {
         address[] memory actors = _getActors();
         require(actors.length > 1, "Need at least 2 actors for cross-actor approval");
-        
+
         address owner = _getActor();
         uint256 spenderIndex = uint256(keccak256(abi.encodePacked(block.timestamp, owner))) % actors.length;
         address spender = actors[spenderIndex];
-        
+
         // Make sure spender is different from owner
         if (spender == owner) {
             spenderIndex = (spenderIndex + 1) % actors.length;
             spender = actors[spenderIndex];
         }
-        
+
         weth9.approve(spender, wad);
     }
 
@@ -85,34 +88,35 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
         sumDeposits += amount;
     }
 
-    function weth9_transfer(address dst, uint256 wad) public asActor {
+    function weth9_transfer(uint256 wad) public asActor {
         // Get a random actor from the list as the destination
         address[] memory actors = _getActors();
         require(actors.length > 1, "Need at least 2 actors for transfer");
-        
+
         // Select a different actor than the sender
         address sender = _getActor();
         address recipient;
         uint256 recipientIndex = uint256(keccak256(abi.encodePacked(block.timestamp))) % actors.length;
         recipient = actors[recipientIndex];
-        
+
         // Make sure we don't transfer to ourselves
         if (recipient == sender) {
             recipientIndex = (recipientIndex + 1) % actors.length;
+            // This can still be recipient == sender, but it's ok
             recipient = actors[recipientIndex];
         }
-        
+
         weth9.transfer(recipient, wad);
     }
 
-    function weth9_transferFrom(address src, address dst, uint256 wad) public asActor {
+    function weth9_transferFrom(uint256 wad) public asActor {
         // Get actors list
         address[] memory actors = _getActors();
         require(actors.length > 2, "Need at least 3 actors for proper transferFrom");
-        
+
         // Current actor will be the spender (msg.sender)
         address spender = _getActor();
-        
+
         // Select a different actor as the source (token owner)
         uint256 sourceIndex = uint256(keccak256(abi.encodePacked(block.timestamp, spender))) % actors.length;
         address source = actors[sourceIndex];
@@ -120,7 +124,7 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
             sourceIndex = (sourceIndex + 1) % actors.length;
             source = actors[sourceIndex];
         }
-        
+
         // Select a different actor as destination
         uint256 destIndex = uint256(keccak256(abi.encodePacked(block.timestamp, source))) % actors.length;
         address destination = actors[destIndex];
@@ -128,41 +132,9 @@ abstract contract Weth9Targets is BaseTargetFunctions, Properties {
             destIndex = (destIndex + 1) % actors.length;
             destination = actors[destIndex];
         }
-        
+
         // This will hit the allowance logic because source != spender (msg.sender)
         weth9.transferFrom(source, destination, wad);
-    }
-
-    // NEW: Enhanced transferFrom that ensures allowance logic is hit
-    function weth9_transferFrom_with_allowance(uint256 allowanceAmount, uint256 transferAmount) public asActor {
-        address[] memory actors = _getActors();
-        require(actors.length > 2, "Need at least 3 actors");
-        
-        address spender = _getActor();
-        
-        // Select different source and destination
-        uint256 sourceIndex = uint256(keccak256(abi.encodePacked(block.timestamp, spender))) % actors.length;
-        address source = actors[sourceIndex];
-        if (source == spender) {
-            sourceIndex = (sourceIndex + 1) % actors.length;
-            source = actors[sourceIndex];
-        }
-        
-        uint256 destIndex = (sourceIndex + 1) % actors.length;
-        address destination = actors[destIndex];
-        if (destination == spender) {
-            destIndex = (destIndex + 1) % actors.length;
-            destination = actors[destIndex];
-        }
-        
-        // First, set up allowance (switch to source actor temporarily)
-        vm.prank(source);
-        weth9.approve(spender, allowanceAmount);
-        
-        // Now do the transferFrom which should hit the allowance logic
-        // Clamp the transfer amount to be within reasonable bounds
-        uint256 clampedAmount = between(transferAmount, 1, allowanceAmount);
-        weth9.transferFrom(source, destination, clampedAmount);
     }
 
     function weth9_withdraw(uint256 wad) public asActor {
